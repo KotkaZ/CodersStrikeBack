@@ -1,4 +1,7 @@
+
 import java.util.*;
+
+
 import java.io.*;
 
 /**
@@ -11,11 +14,11 @@ class Player {
     private static int checkpointCount;
     private static int[][] checkpoints;
 
-    private static final Pod myPod1 = new Pod();
-    private static final Pod myPod2 = new Pod();
-    private static final Pod enemyPod1 = new Pod();
-    private static final Pod enemyPod2 = new Pod();
-
+    private static final Pod myPod1 = new Pod(0);
+    private static final Pod myPod2 = new Pod(1);
+    private static final Pod enemyPod1 = new Pod(2);
+    private static final Pod enemyPod2 = new Pod(2);
+    private static final List<Pod> allPods = Arrays.asList(myPod1, myPod2, enemyPod1, enemyPod2);
 
     public static void main(String args[]) {
         Scanner in = new Scanner(System.in);
@@ -33,52 +36,20 @@ class Player {
 
         // game loop
         while (true) {
-            myPod1.setCoordinates(in.nextInt(), in.nextInt());
-            myPod1.setVelocity(in.nextInt(), in.nextInt());
-            myPod1.setAngle(in.nextInt());
-            myPod1.setCheckpoint(in.nextInt());
+            // Readin in game data for all pods. 
+            for(Pod pod : allPods){
+                pod.setCoordinates(in.nextInt(), in.nextInt());
+                pod.setVelocity(in.nextInt(), in.nextInt());
+                pod.setAngle(in.nextInt());
+                pod.setCheckpoint(in.nextInt());
+            }
             
-            myPod2.setCoordinates(in.nextInt(), in.nextInt());
-            myPod2.setVelocity(in.nextInt(), in.nextInt());
-            myPod2.setAngle(in.nextInt());
-            myPod2.setCheckpoint(in.nextInt());
-
-            enemyPod1.setCoordinates(in.nextInt(), in.nextInt());
-            enemyPod1.setVelocity(in.nextInt(), in.nextInt());
-            enemyPod1.setAngle(in.nextInt());
-            enemyPod1.setCheckpoint(in.nextInt());
-
-            enemyPod2.setCoordinates(in.nextInt(), in.nextInt());
-            enemyPod2.setVelocity(in.nextInt(), in.nextInt());
-            enemyPod2.setAngle(in.nextInt());
-            enemyPod2.setCheckpoint(in.nextInt());
+            // Finding the leading enemy pod.
+            Pod bestEnemyPod = enemyPod1.getProgress() > enemyPod2.getProgress() ? enemyPod1 : enemyPod2;
 
             myPod1.move(checkpoints[myPod1.getCheckpoint()][0], checkpoints[myPod1.getCheckpoint()][1]);
-            myPod2.move(checkpoints[myPod2.getCheckpoint()][0], checkpoints[myPod2.getCheckpoint()][1]);
-            //if()
-            // Write an action using System.out.println()
-            // To debug: System.err.println("Debug messages...");
-            //System.err.println(nextCheckpointDist + " " + boostCount);
-
-            // You have to output the target position
-            // followed by the power (0 <= thrust <= 100)
-            // i.e.: "x y thrust"
-            /*
-            int thrust = MAX_THRUST;
-            if(boostCount>0 && nextCheckpointDist >= 5000 && newAngle <= 2){
-                boostCount--;
-                System.out.println((nextCheckpointX - 3 * (x-previousX)) + " " + (nextCheckpointY - 3 * (y-previousY)) + " BOOST");
-                System.out.println((nextCheckpointX - 3 * (x-previousX)) + " " + (nextCheckpointY - 3 * (y-previousY)) + " BOOST");
-            }
-            else{
-                if ( newAngle >= 3) thrust =  (int) Math.round(thrust * (1 - (newAngle/(double)90)));
-                System.out.println((nextCheckpointX - 3 * (x-previousX)) + " " + (nextCheckpointY - 3 * (y-previousY)) + " " + thrust);
-                System.out.println((nextCheckpointX - 3 * (x-previousX)) + " " + (nextCheckpointY - 3 * (y-previousY)) + " " + thrust);
-            }*/
-            //if (nextCheckpointDist <= 1200) 
-            //    thrust = (int) Math.round(thrust * (nextCheckpointDist / 1200));
-                
-            
+            myPod2.move(bestEnemyPod.getX() - 3* bestEnemyPod.getVX(), bestEnemyPod.getY() - 3* bestEnemyPod.getVY());
+                            
         }
     }
 }
@@ -90,9 +61,20 @@ class Pod{
     private int vy;
     private int angle;
     private int nextCheckPointId;
+    private int progress;
     private final int MAX_THRUST = 100;
+    private Type type;
 
-    Pod(){
+    public static enum Type {
+        RACER,
+        INTERCEPTOR,
+        ENEMY
+    }
+
+    Pod(int type){
+        if(type == 0) this.type = Type.RACER;
+        else if(type == 1) this.type = Type.INTERCEPTOR;
+        else  this.type = Type.ENEMY;
     }
 
     public void setCoordinates(int x, int y){
@@ -110,6 +92,7 @@ class Pod{
     }
 
     public void setCheckpoint(int nextCheckPointId){
+        if(this.nextCheckPointId != nextCheckPointId) progress++;
         this.nextCheckPointId = nextCheckPointId;
     }
 
@@ -144,29 +127,40 @@ class Pod{
         return this.nextCheckPointId;
     }
 
+    public int getProgress(){
+        return this.progress;
+    }
+
     public void move(int checkpointX, int checkpointY){
         int thrust = MAX_THRUST;
         int checkpointDistance = checkpointDistance(checkpointX, checkpointY);
 
-
-        if(checkpointDistance >= 5000 && getAngle() <= 2){
+        if(type == Type.INTERCEPTOR && checkpointDistance<500 && (Math.abs(vx) + Math.abs(vy))>=200){
+            System.out.println((checkpointX - 1 * vx) + " " + (checkpointY - 1 * vy) + " SHIELD");
+        }
+        else if(type == Type.INTERCEPTOR && checkpointDistance >= 3000 && getAngle() <= 4){
+            System.out.println((checkpointX - 3 * vx) + " " + (checkpointY - 3 * vy) + " BOOST");
+        }
+        else if(type == Type.RACER && checkpointDistance >= 4000 && getAngle() <= 2){
             System.out.println((checkpointX - 3 * vx) + " " + (checkpointY - 3 * vy) + " BOOST");
         }
         else{
             int wayAngle = distance(getAngle(), getBearing(getX(), getY(), checkpointX, checkpointY));
             wayAngle = wayAngle > 90 ? 90 : wayAngle;
 
-            if (wayAngle >= 3) thrust =  (int) Math.round(thrust * (1 - (wayAngle/(double)90)));
+            if (wayAngle >= 4) thrust =  (int) Math.round(thrust * (1 - (wayAngle/(double)95)));
             System.out.println((checkpointX - 3 * vx) + " " + (checkpointY - 3 * vy) + " " + thrust);
         }
     }
 
+    // in 2d distance between two points.
     private int checkpointDistance(int checkpointX, int checkpointY){
         return (int) Math.round(Math.sqrt(Math.pow(checkpointX - x, 2) + Math.pow(checkpointY - y, 2)));
     }
 
-    public static int distance(int alpha, int beta) {
-        int phi = Math.abs(beta - alpha) % 360;       // This is either the distance or 360 - distance
+    // Angle between two lines.
+    public int distance(int alpha, int beta) {
+        int phi = Math.abs(beta - alpha) % 360;  
         int distance = phi > 180 ? 360 - phi : phi;
         return distance;
     }
